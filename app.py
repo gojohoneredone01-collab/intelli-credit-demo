@@ -1,228 +1,178 @@
 import streamlit as st
 import matplotlib.pyplot as plt
 
-st.set_page_config(
-    page_title="CredIntel AI",
-    page_icon="🏦",
-    layout="wide"
-)
+st.set_page_config(page_title="CredIntel AI", layout="wide")
 
-# -----------------------
-# HEADER
-# -----------------------
+st.title("CredIntel AI - Corporate Credit Intelligence")
 
-st.markdown("""
-<style>
-.big-title {
-    font-size:42px !important;
-    font-weight:700;
-}
-.subtitle {
-    font-size:18px;
-    color:gray;
-}
-</style>
-""", unsafe_allow_html=True)
+st.markdown("AI assisted credit appraisal prototype")
 
-st.markdown('<p class="big-title">🏦 CredIntel AI</p>', unsafe_allow_html=True)
-st.markdown('<p class="subtitle">AI-Powered Corporate Credit Decisioning Platform</p>', unsafe_allow_html=True)
+# -------------------------------
+# COMPANY INFORMATION
+# -------------------------------
 
-st.write("Smarter, faster, and explainable credit appraisal for modern lending teams.")
+st.header("Company Information")
 
-st.markdown("---")
+company = st.text_input("Company Name")
+sector = st.text_input("Sector")
+loan_amount = st.number_input("Requested Loan Amount", value=1000000)
 
-# -----------------------
-# DATA INGESTOR
-# -----------------------
+# -------------------------------
+# STRUCTURED FINANCIAL DATA
+# -------------------------------
 
-st.header("📂 Data Ingestor")
+st.header("Structured Financial Data")
 
-col1, col2 = st.columns(2)
+revenue = st.number_input("Annual Revenue", value=0)
+profit = st.number_input("Net Profit / Loss", value=0)
+debt = st.number_input("Total Debt Outstanding", value=0)
+gst_turnover = st.number_input("GST Turnover", value=0)
 
-with col1:
-    company = st.text_input("Company Name")
-    sector = st.text_input("Sector")
+# -------------------------------
+# DOCUMENT UPLOADS
+# -------------------------------
 
-with col2:
-    requested_loan = st.text_input("Requested Loan Amount")
+st.header("Unstructured Documents")
 
-st.subheader("Upload Business Documents")
+annual_report = st.file_uploader("Upload Annual Report", type=["txt","pdf"])
+financial_statement = st.file_uploader("Upload Financial Statement", type=["txt","pdf"])
 
-gst_file = st.file_uploader("Upload GST Filing", type=["pdf","csv"])
-bank_file = st.file_uploader("Upload Bank Statement", type=["pdf","csv"])
-annual_file = st.file_uploader("Upload Annual Report", type=["pdf"])
-financial_file = st.file_uploader("Upload Financial Statement", type=["pdf","csv"])
+# -------------------------------
+# EXTERNAL INTELLIGENCE
+# -------------------------------
 
-# -----------------------
-# RESEARCH AGENT
-# -----------------------
+st.header("External Intelligence")
 
-st.markdown("---")
-st.header("🔎 Research Agent")
+news_reports = st.text_area("Sector News / Company News")
+mca_filings = st.text_area("MCA Filing Observations")
+legal_disputes = st.text_area("Legal Disputes (e-Courts)")
 
-news_input = st.text_area("Company News / Research Notes")
+# -------------------------------
+# PRIMARY INSIGHTS
+# -------------------------------
 
-legal_input = st.text_area("Legal Disputes / Litigation Notes")
+st.header("Primary Insights")
 
-sector_input = st.text_area("Sector Trends")
+factory_visit = st.text_area("Factory Visit Observations")
+management_notes = st.text_area("Management Interview Notes")
 
-officer_notes = st.text_area("Credit Officer Notes")
+# -------------------------------
+# TEXT EXTRACTION FUNCTION
+# -------------------------------
 
-# -----------------------
-# RUN ANALYSIS BUTTON
-# -----------------------
+def extract_text(uploaded_file):
 
-st.markdown("---")
-st.header("⚙ Recommendation Engine")
+    if uploaded_file is None:
+        return ""
 
-run_analysis = st.button("Generate Credit Decision")
+    try:
+        text = uploaded_file.read().decode("utf-8")
+    except:
+        text = ""
 
-# -----------------------
-# ANALYSIS LOGIC
-# -----------------------
+    return text.lower()
 
-if run_analysis:
+# -------------------------------
+# CREDIT SCORING ENGINE
+# -------------------------------
+
+def calculate_score():
 
     score = 80
-    warnings = []
     reasons = []
 
-    legal = legal_input.lower()
-    sector_t = sector_input.lower()
-    notes = officer_notes.lower()
-    news = news_input.lower()
+    # financial checks
 
-    # Legal risk
-    if "litigation" in legal or "case" in legal or "dispute" in legal:
+    if profit < 0:
         score -= 20
-        warnings.append("Legal dispute detected")
+        reasons.append("Company reporting losses")
 
-    # Sector risk
-    if "slowdown" in sector_t or "decline" in sector_t:
+    if debt > revenue and revenue != 0:
         score -= 15
-        warnings.append("Sector slowdown detected")
+        reasons.append("Debt higher than revenue")
 
-    # Operational risk
-    if "40% capacity" in notes:
-        score -= 15
-        warnings.append("Factory operating below normal capacity")
-
-    # Financial risk
-    if "debt increasing" in notes:
-        score -= 15
-        warnings.append("Debt increasing rapidly")
-
-    # News risk
-    if "fraud" in news or "default" in news:
-        score -= 20
-        warnings.append("Negative company news detected")
-
-    # Document count
-    uploaded_docs = [gst_file, bank_file, annual_file, financial_file]
-    uploaded_count = sum(x is not None for x in uploaded_docs)
-
-    if uploaded_count < 2:
+    if gst_turnover == 0:
         score -= 10
-        warnings.append("Limited supporting documents")
+        reasons.append("GST turnover unavailable")
 
-    # Clamp score
-    if score < 0:
-        score = 0
+    # extract uploaded file text
 
-    # Decision
+    report_text = extract_text(annual_report)
+    financial_text = extract_text(financial_statement)
+
+    combined_text = (
+        report_text +
+        financial_text +
+        news_reports +
+        mca_filings +
+        legal_disputes +
+        factory_visit +
+        management_notes
+    ).lower()
+
+    risk_keywords = {
+        "litigation":20,
+        "fraud":25,
+        "loss":15,
+        "default":25,
+        "slowdown":10,
+        "debt":10,
+        "shutdown":20,
+        "bankruptcy":30
+    }
+
+    for word, penalty in risk_keywords.items():
+
+        if word in combined_text:
+            score -= penalty
+            reasons.append(f"Risk detected: {word}")
+
+    return score, reasons
+
+# -------------------------------
+# DECISION ENGINE
+# -------------------------------
+
+if st.button("Generate Credit Decision"):
+
+    score, reasons = calculate_score()
+
     if score >= 75:
         decision = "APPROVE"
         interest = "Base + 1%"
-        loan_amount = "80% of requested limit"
     elif score >= 55:
         decision = "REVIEW"
         interest = "Base + 3%"
-        loan_amount = "60% of requested limit"
     else:
         decision = "REJECT"
-        interest = "Base + 5%"
-        loan_amount = "High risk"
+        interest = "High Risk Premium"
 
-    # Positive reasons
-    if uploaded_count >= 3:
-        reasons.append("Sufficient supporting documents uploaded")
+    st.subheader("Credit Analysis Result")
 
-    if "litigation" not in legal:
-        reasons.append("No major litigation found")
+    col1, col2, col3 = st.columns(3)
 
-    if "slowdown" not in sector_t:
-        reasons.append("Sector demand stable")
+    col1.metric("Credit Score", score)
+    col2.metric("Decision", decision)
+    col3.metric("Interest Rate", interest)
 
-    if "fraud" not in news:
-        reasons.append("No severe adverse news detected")
+    st.subheader("Reasoning")
 
-    # -----------------------
-    # RESULTS DASHBOARD
-    # -----------------------
+    for r in reasons:
+        st.write("-", r)
 
-    st.markdown("---")
-    st.header("📊 Credit Decision Summary")
-
-    c1, c2, c3, c4 = st.columns(4)
-
-    c1.metric("Credit Score", score)
-    c2.metric("Recommended Loan", loan_amount)
-    c3.metric("Interest Rate", interest)
-    c4.metric("Documents Reviewed", uploaded_count)
-
-    st.subheader("Final Decision")
-
-    if decision == "APPROVE":
-        st.success(decision)
-    elif decision == "REVIEW":
-        st.warning(decision)
-    else:
-        st.error(decision)
-
-    # -----------------------
-    # EXPLAINABLE AI
-    # -----------------------
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.subheader("Explainable AI")
-
-        if reasons:
-            for r in reasons:
-                st.write("✔", r)
-
-    with col2:
-        st.subheader("Early Warning Signals")
-
-        if warnings:
-            for w in warnings:
-                st.warning(w)
-        else:
-            st.success("No major risk signals")
-
-    st.subheader("Key Risk Summary")
-
-    if warnings:
-        st.info(" | ".join(warnings))
-    else:
-        st.info("No significant risk signals detected")
-
-    # -----------------------
+    # -------------------------------
     # RISK RADAR
-    # -----------------------
+    # -------------------------------
 
-    st.subheader("Risk Radar Visualization")
+    financial_risk = min(100, debt/(revenue+1)*50)
+    legal_risk = 80 if "litigation" in legal_disputes.lower() else 20
+    sector_risk = 60 if "slowdown" in news_reports.lower() else 30
+    operational_risk = 60 if "capacity" in factory_visit.lower() else 30
 
-    financial_risk = 100 - score
-    legal_risk = 70 if "litigation" in legal else 20
-    sector_risk = 60 if "slowdown" in sector_t else 25
-    operational_risk = 65 if "40% capacity" in notes else 30
+    labels = ["Financial","Legal","Sector","Operational"]
+    values = [financial_risk,legal_risk,sector_risk,operational_risk]
 
-    labels = ["Financial", "Legal", "Sector", "Operational"]
-    values = [financial_risk, legal_risk, sector_risk, operational_risk]
-
-    fig = plt.figure(figsize=(6,6))
+    fig = plt.figure(figsize=(5,5))
     ax = fig.add_subplot(111, polar=True)
 
     angles = [0,1.57,3.14,4.71]
@@ -235,34 +185,3 @@ if run_analysis:
     ax.set_xticklabels(labels)
 
     st.pyplot(fig)
-
-    # -----------------------
-    # CAM GENERATOR
-    # -----------------------
-
-    st.subheader("Smart Credit Appraisal Memo")
-
-    cam = f"""
-Company Overview
-{company} operates in the {sector} sector.
-
-Financial Analysis
-Credit score generated: {score}.
-Documents reviewed: {uploaded_count}.
-
-Risk Factors
-{', '.join(warnings) if warnings else 'No major risk factors detected'}
-
-Sector Analysis
-{sector_input}
-
-Final Recommendation
-Decision: {decision}
-Suggested Loan: {loan_amount}
-Interest Rate: {interest}
-"""
-
-    st.text_area("Generated CAM", cam, height=250)
-
-st.markdown("---")
-st.caption("CredIntel AI • Explainable Credit Decisioning Platform")
